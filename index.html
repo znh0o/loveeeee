@@ -27,12 +27,12 @@ body { margin:0; font-family:sans-serif; background:#ffeef3; }
   box-shadow:0 8px 20px rgba(0,0,0,0.08);
 }
 
-.big-title {
+.title {
   text-align:center;
-  font-size:30px;
+  font-size:26px;
   font-weight:bold;
   color:#ff5d8f;
-  margin-bottom:20px;
+  margin-bottom:15px;
 }
 
 input {
@@ -56,7 +56,7 @@ button {
   cursor:pointer;
 }
 
-/* 서비스 화면 */
+/* 채팅 */
 .header {
   padding:12px;
   background:white;
@@ -99,21 +99,22 @@ button {
 
 <body>
 
-<!-- 🔐 로그인 화면 -->
+<!-- 🔐 시작 화면 (방 생성 + 입장) -->
 <div id="loginScreen" class="screen active center">
   <div class="loginBox">
 
-    <div class="big-title">💖 Couple Login</div>
+    <div class="title">💖 Couple Service</div>
 
-    <input id="room" placeholder="커플 코드">
+    <input id="room" placeholder="커플 코드 (없으면 생성)">
     <input id="name" placeholder="이름">
 
-    <button onclick="login()">입장하기</button>
+    <button onclick="createRoom()">✨ 방 만들기</button>
+    <button onclick="enterRoom()">💬 입장하기</button>
 
   </div>
 </div>
 
-<!-- 💬 서비스 화면 -->
+<!-- 💬 채팅 화면 -->
 <div id="appScreen" class="screen">
   <div class="header">
     💖 Couple Chat
@@ -165,8 +166,23 @@ window.onload = function(){
 }
 
 
-// 💖 로그인
-function login(){
+// 💖 방 생성
+function createRoom(){
+  const code = Math.random().toString(36).substring(2,7);
+  document.getElementById("room").value = code;
+
+  db.ref("rooms/"+code).set({
+    owner:"",
+    partner:"",
+    messages:{}
+  });
+
+  alert("방 생성됨: " + code);
+}
+
+
+// 💖 입장
+function enterRoom(){
   roomId = document.getElementById("room").value;
   userName = document.getElementById("name").value;
 
@@ -175,11 +191,20 @@ function login(){
     return;
   }
 
-  localStorage.setItem("roomId", roomId);
-  localStorage.setItem("userName", userName);
+  db.ref("rooms/"+roomId).once("value", snap=>{
+    const data = snap.val();
 
-  showApp();
-  loadChat();
+    if(!data){
+      alert("없는 방");
+      return;
+    }
+
+    localStorage.setItem("roomId", roomId);
+    localStorage.setItem("userName", userName);
+
+    showApp();
+    loadChat();
+  });
 }
 
 
@@ -204,7 +229,7 @@ function send(){
 }
 
 
-// 💬 채팅
+// 💬 채팅 로드
 function loadChat(){
   const chatBox = document.getElementById("chat");
 
