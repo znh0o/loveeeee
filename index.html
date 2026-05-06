@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Couple Day 💖</title>
+<title>Couple Chat 💖</title>
 
 <style>
 * { box-sizing:border-box; }
-body { margin:0; font-family:'Pretendard', sans-serif; background:#ffeef3; }
+body { margin:0; font-family:sans-serif; background:#ffeef3; }
 
 .screen { display:none; height:100vh; flex-direction:column; }
 .active { display:flex; }
@@ -16,7 +16,7 @@ body { margin:0; font-family:'Pretendard', sans-serif; background:#ffeef3; }
 
 .big-dday {
   text-align:center;
-  font-size:42px;
+  font-size:40px;
   font-weight:bold;
   color:#ff5d8f;
   margin-top:40px;
@@ -68,7 +68,11 @@ input, textarea {
   font-weight:bold;
 }
 
-.chat { flex:1; padding:15px; overflow-y:auto; }
+.chat {
+  flex:1;
+  padding:15px;
+  overflow-y:auto;
+}
 
 .msg {
   max-width:70%;
@@ -77,8 +81,15 @@ input, textarea {
   margin-bottom:14px;
 }
 
-.me { background:#ff8fab; color:white; margin-left:auto; }
-.other { background:white; }
+.me {
+  background:#ff8fab;
+  color:white;
+  margin-left:auto;
+}
+
+.other {
+  background:white;
+}
 
 .inputBar {
   display:flex;
@@ -94,8 +105,10 @@ input, textarea {
 
 <body>
 
+<!-- 홈 -->
 <div id="home" class="screen active">
   <div class="home">
+
     <div class="big-dday" id="dday">D+0</div>
 
     <div class="card">
@@ -104,19 +117,19 @@ input, textarea {
     </div>
 
     <div class="card">
-      <input id="room" placeholder="커플 코드 입력">
-      <input id="name" placeholder="내 이름">
+      <input id="room" placeholder="커플 코드">
+      <input id="name" placeholder="이름">
 
       <button onclick="createRoom()">✨ 방 만들기</button>
-      <button onclick="copyCode()">📋 코드 복사</button>
+      <button onclick="connect()">💬 입장</button>
 
       <div id="codeDisplay" class="codeBox">코드 없음</div>
-
-      <button onclick="connect()">💬 채팅 시작</button>
     </div>
+
   </div>
 </div>
 
+<!-- 채팅 -->
 <div id="chatScreen" class="screen">
   <div class="header" onclick="goHome()">← 홈</div>
   <div id="chat" class="chat"></div>
@@ -127,6 +140,7 @@ input, textarea {
   </div>
 </div>
 
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -147,64 +161,81 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 방 생성
+/* 💖 방 만들기 (owner 생성) */
 function createRoom(){
   const code = Math.random().toString(36).substring(2,7);
+  const name = document.getElementById("name").value;
+
+  db.ref("rooms/"+code).set({
+    owner: name,
+    partner: "",
+    messages: {}
+  });
+
   document.getElementById("room").value = code;
   document.getElementById("codeDisplay").innerText = "💖 코드: " + code;
 }
 
-// 복사
-function copyCode(){
-  const room = document.getElementById("room").value;
-  if(!room) return alert("코드 먼저 만들어!");
-  navigator.clipboard.writeText(room);
-  alert("복사됨!");
-}
-
-// 연결
+/* 💖 입장 (2명 제한) */
 function connect(){
   roomId = document.getElementById("room").value;
   userName = document.getElementById("name").value;
 
-  if(!roomId || !userName){
-    alert("코드랑 이름 입력해!");
-    return;
-  }
+  db.ref("rooms/"+roomId).once("value", snap=>{
+    const data = snap.val();
 
-  document.getElementById("home").classList.remove("active");
-  document.getElementById("chatScreen").classList.add("active");
+    if(!data){
+      alert("없는 방");
+      return;
+    }
 
-  loadChat();
+    // partner 등록
+    if(data.partner === "" && data.owner !== userName){
+      db.ref("rooms/"+roomId).update({
+        partner: userName
+      });
+    }
+
+    // ❌ 3번째 사람 차단
+    if(data.owner !== userName && data.partner !== userName){
+      alert("이 방은 2명만 가능합니다");
+      return;
+    }
+
+    document.getElementById("home").classList.remove("active");
+    document.getElementById("chatScreen").classList.add("active");
+
+    loadChat();
+  });
 }
 
-// 전송
+/* 💬 전송 */
 function send(){
-  const msgInput = document.getElementById("msg");
-  if(!msgInput.value) return;
+  const msg = document.getElementById("msg").value;
+  if(!msg) return;
 
-  db.ref("chat/"+roomId).push({
+  db.ref("rooms/"+roomId+"/messages").push({
     name:userName,
-    text:msgInput.value
+    text:msg
   });
 
-  msgInput.value="";
+  document.getElementById("msg").value="";
 }
 
-// 채팅 로드
+/* 💬 로드 */
 function loadChat(){
   const chatBox = document.getElementById("chat");
 
-  db.ref("chat/"+roomId).on("value", snap=>{
+  db.ref("rooms/"+roomId+"/messages").on("value", snap=>{
     chatBox.innerHTML="";
     const data = snap.val();
     if(!data) return;
 
     for(let id in data){
       const m=data[id];
-      const isMe = m.name===userName;
+      const isMe = m.name === userName;
 
-      chatBox.innerHTML+=`
+      chatBox.innerHTML += `
         <div class="msg ${isMe?'me':'other'}">${m.text}</div>
       `;
     }
@@ -213,28 +244,20 @@ function loadChat(){
   });
 }
 
-// 홈
+/* 홈 */
 function goHome(){
   document.getElementById("chatScreen").classList.remove("active");
   document.getElementById("home").classList.add("active");
 }
 
-// 디데이
+/* 디데이 */
 function saveDate(){
-  const val = document.getElementById("start").value;
-  localStorage.setItem("start", val);
-  updateDday();
-}
-
-function updateDday(){
-  const d = localStorage.getItem("start");
-  if(!d) return;
+  const d = document.getElementById("start").value;
+  localStorage.setItem("start", d);
 
   const diff = Math.floor((new Date()-new Date(d))/86400000)+1;
   document.getElementById("dday").innerText = "D+"+diff;
 }
-
-updateDday();
 </script>
 
 </body>
