@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Couple Chat 💖</title>
+<title>Couple Day 💖</title>
 
 <style>
 * { box-sizing:border-box; }
@@ -81,15 +81,8 @@ input, textarea {
   margin-bottom:14px;
 }
 
-.me {
-  background:#ff8fab;
-  color:white;
-  margin-left:auto;
-}
-
-.other {
-  background:white;
-}
+.me { background:#ff8fab; color:white; margin-left:auto; }
+.other { background:white; }
 
 .inputBar {
   display:flex;
@@ -105,7 +98,7 @@ input, textarea {
 
 <body>
 
-<!-- 홈 -->
+<!-- 💙 홈 -->
 <div id="home" class="screen active">
   <div class="home">
 
@@ -121,6 +114,7 @@ input, textarea {
       <input id="name" placeholder="이름">
 
       <button onclick="createRoom()">✨ 방 만들기</button>
+      <button onclick="copyCode()">📋 코드 복사</button>
       <button onclick="connect()">💬 입장</button>
 
       <div id="codeDisplay" class="codeBox">코드 없음</div>
@@ -129,9 +123,13 @@ input, textarea {
   </div>
 </div>
 
-<!-- 채팅 -->
+<!-- 💬 채팅 -->
 <div id="chatScreen" class="screen">
-  <div class="header" onclick="goHome()">← 홈</div>
+  <div class="header">
+    ← 커플 채팅
+    <button onclick="logout()" style="float:right;width:80px;">로그아웃</button>
+  </div>
+
   <div id="chat" class="chat"></div>
 
   <div class="inputBar">
@@ -161,9 +159,28 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* 💖 방 만들기 (owner 생성) */
+
+// 💖 자동 로그인
+window.onload = function(){
+  const r = localStorage.getItem("roomId");
+  const n = localStorage.getItem("userName");
+
+  if(r && n){
+    roomId = r;
+    userName = n;
+
+    document.getElementById("home").classList.remove("active");
+    document.getElementById("chatScreen").classList.add("active");
+
+    loadChat();
+  }
+}
+
+
+// 💖 방 생성 (기존 유지)
 function createRoom(){
   const code = Math.random().toString(36).substring(2,7);
+
   const name = document.getElementById("name").value;
 
   db.ref("rooms/"+code).set({
@@ -176,10 +193,25 @@ function createRoom(){
   document.getElementById("codeDisplay").innerText = "💖 코드: " + code;
 }
 
-/* 💖 입장 (2명 제한) */
+
+// 💖 코드 복사 (기존 기능)
+function copyCode(){
+  const room = document.getElementById("room").value;
+  if(!room) return alert("코드 먼저 만들어!");
+  navigator.clipboard.writeText(room);
+  alert("복사됨!");
+}
+
+
+// 💖 입장 + 2인 제한
 function connect(){
   roomId = document.getElementById("room").value;
   userName = document.getElementById("name").value;
+
+  if(!roomId || !userName){
+    alert("코드랑 이름 입력!");
+    return;
+  }
 
   db.ref("rooms/"+roomId).once("value", snap=>{
     const data = snap.val();
@@ -189,18 +221,19 @@ function connect(){
       return;
     }
 
-    // partner 등록
     if(data.partner === "" && data.owner !== userName){
       db.ref("rooms/"+roomId).update({
         partner: userName
       });
     }
 
-    // ❌ 3번째 사람 차단
     if(data.owner !== userName && data.partner !== userName){
-      alert("이 방은 2명만 가능합니다");
+      alert("2명만 입장 가능");
       return;
     }
+
+    localStorage.setItem("roomId", roomId);
+    localStorage.setItem("userName", userName);
 
     document.getElementById("home").classList.remove("active");
     document.getElementById("chatScreen").classList.add("active");
@@ -209,7 +242,8 @@ function connect(){
   });
 }
 
-/* 💬 전송 */
+
+// 💬 전송
 function send(){
   const msg = document.getElementById("msg").value;
   if(!msg) return;
@@ -222,7 +256,8 @@ function send(){
   document.getElementById("msg").value="";
 }
 
-/* 💬 로드 */
+
+// 💬 채팅
 function loadChat(){
   const chatBox = document.getElementById("chat");
 
@@ -232,7 +267,7 @@ function loadChat(){
     if(!data) return;
 
     for(let id in data){
-      const m=data[id];
+      const m = data[id];
       const isMe = m.name === userName;
 
       chatBox.innerHTML += `
@@ -244,13 +279,16 @@ function loadChat(){
   });
 }
 
-/* 홈 */
-function goHome(){
-  document.getElementById("chatScreen").classList.remove("active");
-  document.getElementById("home").classList.add("active");
+
+// 💖 로그아웃
+function logout(){
+  localStorage.removeItem("roomId");
+  localStorage.removeItem("userName");
+  location.reload();
 }
 
-/* 디데이 */
+
+// 💖 디데이
 function saveDate(){
   const d = document.getElementById("start").value;
   localStorage.setItem("start", d);
