@@ -3,30 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Couple Day 💖</title>
 
 <style>
 * { box-sizing:border-box; }
+body { margin:0; font-family:'Pretendard', sans-serif; background:#ffeef3; }
 
-body {
-  margin:0;
-  font-family:'Pretendard', sans-serif;
-  background:#ffeef3;
-}
-
-.screen {
-  display:none;
-  height:100vh;
-  flex-direction:column;
-}
+.screen { display:none; height:100vh; flex-direction:column; }
 .active { display:flex; }
 
-.home {
-  padding:20px;
-  max-width:420px;
-  margin:auto;
-}
+.home { padding:20px; max-width:420px; margin:auto; }
 
 .big-dday {
   text-align:center;
@@ -65,7 +51,6 @@ input, textarea {
   margin-top:10px;
 }
 
-/* 코드 표시 */
 .codeBox {
   background:#fff0f5;
   padding:10px;
@@ -76,7 +61,6 @@ input, textarea {
   color:#ff5d8f;
 }
 
-/* 채팅 */
 .header {
   padding:12px;
   background:white;
@@ -84,29 +68,17 @@ input, textarea {
   font-weight:bold;
 }
 
-.chat {
-  flex:1;
-  padding:15px;
-  overflow-y:auto;
-}
+.chat { flex:1; padding:15px; overflow-y:auto; }
 
 .msg {
   max-width:70%;
   padding:10px;
   border-radius:16px;
   margin-bottom:14px;
-  position:relative;
 }
 
-.me {
-  background:#ff8fab;
-  color:white;
-  margin-left:auto;
-}
-
-.other {
-  background:white;
-}
+.me { background:#ff8fab; color:white; margin-left:auto; }
+.other { background:white; }
 
 .inputBar {
   display:flex;
@@ -115,22 +87,15 @@ input, textarea {
   background:white;
 }
 
-.inputBar textarea {
-  flex:1;
-}
-
-.inputBar button {
-  width:70px;
-}
+.inputBar textarea { flex:1; }
+.inputBar button { width:70px; }
 </style>
 </head>
 
 <body>
 
-<!-- 홈 -->
 <div id="home" class="screen active">
   <div class="home">
-
     <div class="big-dday" id="dday">D+0</div>
 
     <div class="card">
@@ -149,14 +114,11 @@ input, textarea {
 
       <button onclick="connect()">💬 채팅 시작</button>
     </div>
-
   </div>
 </div>
 
-<!-- 채팅 -->
 <div id="chatScreen" class="screen">
   <div class="header" onclick="goHome()">← 홈</div>
-
   <div id="chat" class="chat"></div>
 
   <div class="inputBar">
@@ -165,98 +127,115 @@ input, textarea {
   </div>
 </div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
+let roomId = "";
+let userName = "";
+
 const firebaseConfig = {
-  apiKey:"여기",
-  databaseURL:"여기"
+  apiKey: "AIzaSyClSapSfkfkzoWMxHVlls1UjIRO4bHl1Fc",
+  authDomain: "first-app-ffb0b.firebaseapp.com",
+  databaseURL: "https://first-app-ffb0b-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "first-app-ffb0b",
+  storageBucket: "first-app-ffb0b.firebasestorage.app",
+  messagingSenderId: "948722690899",
+  appId: "1:948722690899:web:baa8bcc7b15b4f9e02cfa6"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let roomId="", userName="";
-
-// 🔥 방 생성
+// 방 생성
 function createRoom(){
   const code = Math.random().toString(36).substring(2,7);
-  room.value = code;
-  codeDisplay.innerText = "💖 코드: " + code;
+  document.getElementById("room").value = code;
+  document.getElementById("codeDisplay").innerText = "💖 코드: " + code;
 }
 
-// 🔥 코드 복사
+// 복사
 function copyCode(){
-  if(!room.value) return alert("코드 먼저 만들어!");
-  navigator.clipboard.writeText(room.value);
+  const room = document.getElementById("room").value;
+  if(!room) return alert("코드 먼저 만들어!");
+  navigator.clipboard.writeText(room);
   alert("복사됨!");
 }
 
 // 연결
 function connect(){
-  roomId = room.value;
-  userName = name.value;
+  roomId = document.getElementById("room").value;
+  userName = document.getElementById("name").value;
 
-  home.classList.remove("active");
-  chatScreen.classList.add("active");
+  if(!roomId || !userName){
+    alert("코드랑 이름 입력해!");
+    return;
+  }
+
+  document.getElementById("home").classList.remove("active");
+  document.getElementById("chatScreen").classList.add("active");
 
   loadChat();
 }
 
-// 채팅
+// 전송
 function send(){
-  if(!msg.value) return;
+  const msgInput = document.getElementById("msg");
+  if(!msgInput.value) return;
 
   db.ref("chat/"+roomId).push({
     name:userName,
-    text:msg.value
+    text:msgInput.value
   });
 
-  msg.value="";
+  msgInput.value="";
 }
 
+// 채팅 로드
 function loadChat(){
+  const chatBox = document.getElementById("chat");
+
   db.ref("chat/"+roomId).on("value", snap=>{
-    chat.innerHTML="";
+    chatBox.innerHTML="";
     const data = snap.val();
+    if(!data) return;
 
     for(let id in data){
       const m=data[id];
       const isMe = m.name===userName;
 
-      chat.innerHTML+=`
+      chatBox.innerHTML+=`
         <div class="msg ${isMe?'me':'other'}">${m.text}</div>
       `;
     }
 
-    chat.scrollTop = chat.scrollHeight;
+    chatBox.scrollTop = chatBox.scrollHeight;
   });
 }
 
 // 홈
 function goHome(){
-  chatScreen.classList.remove("active");
-  home.classList.add("active");
+  document.getElementById("chatScreen").classList.remove("active");
+  document.getElementById("home").classList.add("active");
 }
 
 // 디데이
 function saveDate(){
-  localStorage.setItem("start", start.value);
+  const val = document.getElementById("start").value;
+  localStorage.setItem("start", val);
   updateDday();
 }
 
 function updateDday(){
-  const d=localStorage.getItem("start");
-  if(!d)return;
+  const d = localStorage.getItem("start");
+  if(!d) return;
 
-  const diff=Math.floor((new Date()-new Date(d))/86400000)+1;
-  dday.innerText="D+"+diff;
+  const diff = Math.floor((new Date()-new Date(d))/86400000)+1;
+  document.getElementById("dday").innerText = "D+"+diff;
 }
 
 updateDday();
-
 </script>
+
 </body>
 </html>
