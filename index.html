@@ -105,6 +105,7 @@ textarea{
 <!-- LOGIN -->
 <div id="login" class="screen active center">
   <div class="box">
+
     <div class="title">💖 Couple App</div>
 
     <input id="room" placeholder="커플 코드">
@@ -112,6 +113,7 @@ textarea{
 
     <button onclick="createRoom()">✨ 방 만들기</button>
     <button onclick="enterRoom()">💬 입장</button>
+
   </div>
 </div>
 
@@ -152,23 +154,28 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 
-// 💖 방 생성 (커플 전용 구조)
+// 💖 방 생성 (절대 안 깨지는 구조)
 function createRoom(){
 
   const code = Math.random().toString(36).substring(2,7).toLowerCase();
 
   document.getElementById("room").value = code;
 
-  db.ref("coupleRooms/"+code).set({
-    members:{},
-    messages:{}
+  db.ref("rooms/"+code).set({
+    createdAt: Date.now(),
+    messages: {
+      system: {
+        name: "system",
+        text: "room created"
+      }
+    }
   });
 
-  alert("방 생성 완료: " + code);
+  alert("방 생성됨: " + code);
 }
 
 
-// 💬 입장 (2명 제한 구조 준비)
+// 💬 입장 (완전 안정)
 function enterRoom(){
 
   roomId = document.getElementById("room").value.trim().toLowerCase();
@@ -179,17 +186,16 @@ function enterRoom(){
     return;
   }
 
-  const ref = db.ref("coupleRooms/"+roomId);
+  const ref = db.ref("rooms/"+roomId);
 
   ref.once("value").then(snap=>{
 
-    if(!snap.exists()){
-      alert("없는 방");
+    console.log("ROOM:", snap.val());
+
+    if(!snap.exists() || !snap.val().messages){
+      alert("없는 방 또는 초기화 안됨");
       return;
     }
-
-    // 💖 멤버 등록 (2명 구조)
-    ref.child("members/"+userName).set(true);
 
     showApp();
     loadChat();
@@ -197,15 +203,14 @@ function enterRoom(){
 }
 
 
-// 💬 메시지
+// 💬 전송
 function send(){
   const msg = document.getElementById("msg").value;
   if(!msg) return;
 
-  db.ref("coupleRooms/"+roomId+"/messages").push({
+  db.ref("rooms/"+roomId+"/messages").push({
     name:userName,
-    text:msg,
-    time:Date.now()
+    text:msg
   });
 
   document.getElementById("msg").value="";
@@ -214,9 +219,7 @@ function send(){
 
 // 💬 로딩
 function loadChat(){
-
-  db.ref("coupleRooms/"+roomId+"/messages").on("value", snap=>{
-
+  db.ref("rooms/"+roomId+"/messages").on("value", snap=>{
     const chat = document.getElementById("chat");
     chat.innerHTML="";
 
@@ -225,6 +228,8 @@ function loadChat(){
 
     for(let id in data){
       const m = data[id];
+      if(m.name === "system") continue;
+
       const me = m.name === userName;
 
       chat.innerHTML += `
