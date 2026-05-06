@@ -97,7 +97,7 @@ button {
 
 <body>
 
-<!-- 🔐 시작 화면 -->
+<!-- 🔐 로그인 -->
 <div id="login" class="screen active center">
   <div class="box">
 
@@ -135,6 +135,7 @@ button {
 let roomId = "";
 let userName = "";
 
+// 🔥 Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyClSapSfkfkzoWMxHVlls1UjIRO4bHl1Fc",
   authDomain: "first-app-ffb0b.firebaseapp.com",
@@ -149,52 +150,68 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 
-// 🔥 방 생성 (무조건 성공 확인)
+// 💖 방 생성 (무조건 성공 + 로그 확인)
 function createRoom(){
-  const code = Math.random().toString(36).substring(2,7);
-  document.getElementById("room").value = code;
+  try {
 
-  db.ref("rooms/"+code).set({
-    createdAt: Date.now(),
-    messages: {}
-  })
-  .then(()=>{
-    alert("방 생성 완료: " + code);
-  })
-  .catch(err=>{
-    console.log(err);
-    alert("방 생성 실패");
-  });
+    const code = Math.random().toString(36).substring(2,7);
+    document.getElementById("room").value = code;
+
+    db.ref("rooms/"+code).set({
+      messages: {}
+    })
+    .then(()=>{
+      alert("방 생성 완료: " + code);
+      console.log("ROOM CREATED:", code);
+    })
+    .catch(err=>{
+      console.log("CREATE ERROR:", err);
+      alert("방 생성 실패");
+    });
+
+  } catch(e){
+    console.log("JS ERROR:", e);
+  }
 }
 
 
-// 💬 입장 (완전 안정 버전)
+// 💬 입장 (완전 안정)
 function enterRoom(){
-  roomId = document.getElementById("room").value;
-  userName = document.getElementById("name").value;
 
-  if(!roomId || !userName){
-    alert("입력해!");
-    return;
+  try {
+
+    roomId = document.getElementById("room").value;
+    userName = document.getElementById("name").value;
+
+    if(!roomId || !userName){
+      alert("입력해!");
+      return;
+    }
+
+    console.log("ENTER:", roomId);
+
+    db.ref("rooms/"+roomId).once("value")
+      .then(snap => {
+
+        if(!snap.exists()){
+          alert("없는 방");
+          return;
+        }
+
+        localStorage.setItem("roomId", roomId);
+        localStorage.setItem("userName", userName);
+
+        showApp();
+        loadChat();
+      })
+      .catch(err=>{
+        console.log("ENTER ERROR:", err);
+        alert("입장 실패 (콘솔 확인)");
+      });
+
+  } catch(e){
+    console.log("JS ERROR:", e);
   }
-
-  db.ref("rooms/"+roomId).once("value")
-    .then(snap=>{
-      if(!snap.exists()){
-        alert("없는 방");
-        return;
-      }
-
-      localStorage.setItem("roomId", roomId);
-      localStorage.setItem("userName", userName);
-
-      showApp();
-      loadChat();
-    })
-    .catch(err=>{
-      console.log(err);
-      alert("연결 실패");
-    });
 }
 
 
@@ -219,7 +236,7 @@ function send(){
 }
 
 
-// 💬 채팅 로드
+// 💬 채팅
 function loadChat(){
   db.ref("rooms/"+roomId+"/messages").on("value", snap=>{
     const chat = document.getElementById("chat");
