@@ -12,47 +12,28 @@ body{
   background:#ffeef3;
 }
 
-/* 화면 */
 .screen{
   display:none;
   height:100vh;
   flex-direction:column;
-  opacity:0;
-  transform:translateY(10px);
-  transition:0.25s ease;
 }
 
-.active{
-  display:flex;
-  opacity:1;
-  transform:translateY(0);
-}
+.active{ display:flex; }
 
-/* 홈 */
-.home{
+.center{
   justify-content:center;
   align-items:center;
-  text-align:center;
 }
 
-.dday{
-  font-size:44px;
-  font-weight:bold;
-  color:#ff5d8f;
-}
-
-/* 카드 */
-.card{
+.box{
   width:90%;
   max-width:400px;
   background:white;
   padding:20px;
-  border-radius:18px;
+  border-radius:16px;
   box-shadow:0 8px 20px rgba(0,0,0,0.08);
-  margin-top:10px;
 }
 
-/* input */
 input{
   width:100%;
   padding:12px;
@@ -62,7 +43,6 @@ input{
   background:#f5f5f5;
 }
 
-/* 버튼 */
 button{
   width:100%;
   padding:12px;
@@ -74,47 +54,32 @@ button{
   font-weight:bold;
 }
 
-/* 채팅 */
+/* CHAT */
 .header{
   padding:12px;
   background:white;
-  font-weight:bold;
 }
 
 .chat{
   flex:1;
-  padding:12px;
+  padding:10px;
   overflow-y:auto;
 }
 
-/* 말풍선 */
 .msg{
   max-width:70%;
-  padding:10px 12px;
+  padding:10px;
   margin:6px 0;
-  border-radius:16px;
-  word-break:break-word;
-  animation:pop 0.15s ease;
+  border-radius:14px;
+  background:#f1f1f1;
 }
 
 .me{
   background:#ff8fab;
   color:white;
   margin-left:auto;
-  border-bottom-right-radius:4px;
 }
 
-.other{
-  background:white;
-  border-bottom-left-radius:4px;
-}
-
-@keyframes pop{
-  from{ transform:scale(0.95); opacity:0; }
-  to{ transform:scale(1); opacity:1; }
-}
-
-/* 입력창 */
 .inputBar{
   display:flex;
   padding:10px;
@@ -125,7 +90,7 @@ button{
 textarea{
   flex:1;
   border:none;
-  border-radius:12px;
+  border-radius:10px;
   padding:10px;
   background:#f5f5f5;
 }
@@ -134,32 +99,26 @@ textarea{
 
 <body>
 
-<!-- HOME -->
-<div id="home" class="screen active home">
+<!-- LOGIN -->
+<div id="login" class="screen active center">
+  <div class="box">
 
-  <div class="dday" id="dday">D+0</div>
+    <h3>💖 Couple App</h3>
 
-  <div class="card">
-    <input type="date" id="startDate">
-    <button onclick="saveDate()">💖 시작일 저장</button>
-  </div>
-
-  <div class="card">
     <input id="room" placeholder="커플 코드">
     <input id="name" placeholder="이름">
 
-    <button onclick="createRoom()">✨ 방 만들기</button>
-    <button onclick="enterRoom()">💬 입장</button>
-  </div>
+    <button onclick="createRoom()">방 만들기</button>
+    <button onclick="enterRoom()">입장</button>
 
+  </div>
 </div>
 
 <!-- CHAT -->
 <div id="chatScreen" class="screen">
-
   <div class="header">
-    💬 Couple Chat
-    <button onclick="goHome()" style="float:right;width:70px;">홈</button>
+    💬 Chat
+    <button onclick="logout()" style="float:right;width:70px;">나가기</button>
   </div>
 
   <div id="chat" class="chat"></div>
@@ -168,7 +127,6 @@ textarea{
     <textarea id="msg"></textarea>
     <button onclick="send()">전송</button>
   </div>
-
 </div>
 
 <!-- Firebase -->
@@ -189,22 +147,32 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* 💖 방 생성 */
+
+// 💖 방 생성 (절대 안 깨지는 구조)
 function createRoom(){
+
   const code = Math.random().toString(36).substring(2,6).toLowerCase();
 
   document.getElementById("room").value = code;
 
   db.ref("rooms/"+code).set({
-    messages:{}
+    createdAt: Date.now(),
+    messages: {
+      system: {
+        name:"system",
+        text:"room created"
+      }
+    }
   });
 
   alert("방 생성됨: " + code);
 }
 
-/* 💬 입장 */
+
+// 💬 입장 (완전 안정 버전)
 function enterRoom(){
-  roomId = document.getElementById("room").value.trim();
+
+  roomId = document.getElementById("room").value.trim().toLowerCase();
   userName = document.getElementById("name").value.trim();
 
   if(!roomId || !userName){
@@ -212,10 +180,22 @@ function enterRoom(){
     return;
   }
 
-  db.ref("rooms/"+roomId).once("value")
-  .then(snap=>{
+  const ref = db.ref("rooms/"+roomId);
+
+  ref.once("value").then(snap=>{
+
+    console.log("ROOM DATA:", snap.val());
+
+    // 🔥 핵심 안정 체크
     if(!snap.exists()){
-      alert("없는 방");
+      alert("없는 방 (Firebase 없음)");
+      return;
+    }
+
+    const data = snap.val();
+
+    if(!data.messages){
+      alert("방 데이터 깨짐");
       return;
     }
 
@@ -224,7 +204,8 @@ function enterRoom(){
   });
 }
 
-/* 💬 전송 */
+
+// 💬 전송
 function send(){
   const msg = document.getElementById("msg").value;
   if(!msg) return;
@@ -237,21 +218,22 @@ function send(){
   document.getElementById("msg").value="";
 }
 
-/* 💬 채팅 */
+
+// 💬 채팅 로딩
 function loadChat(){
   db.ref("rooms/"+roomId+"/messages").on("value", snap=>{
     const chat = document.getElementById("chat");
-    chat.innerHTML="";
+    chat.innerHTML = "";
 
     snap.forEach(child=>{
       const m = child.val();
 
-      const isMe = m.name === userName;
+      if(m.name === "system") return;
+
+      const me = m.name === userName;
 
       chat.innerHTML += `
-        <div class="msg ${isMe?'me':'other'}">
-          ${m.text}
-        </div>
+        <div class="msg ${me?'me':'other'}">${m.text}</div>
       `;
     });
 
@@ -259,32 +241,18 @@ function loadChat(){
   });
 }
 
-/* 🏠 화면 전환 */
+
+// 화면 전환
 function showChat(){
-  document.getElementById("home").classList.remove("active");
+  document.getElementById("login").classList.remove("active");
   document.getElementById("chatScreen").classList.add("active");
 }
 
-function goHome(){
-  document.getElementById("chatScreen").classList.remove("active");
-  document.getElementById("home").classList.add("active");
+
+// 로그아웃
+function logout(){
+  location.reload();
 }
-
-/* 💖 D-day */
-function saveDate(){
-  localStorage.setItem("start", document.getElementById("startDate").value);
-  updateDday();
-}
-
-function updateDday(){
-  const d = localStorage.getItem("start");
-  if(!d) return;
-
-  const diff = Math.floor((new Date() - new Date(d)) / 86400000) + 1;
-  document.getElementById("dday").innerText = "D+" + diff;
-}
-
-updateDday();
 </script>
 
 </body>
