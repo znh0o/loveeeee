@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Couple Day 💖</title>
+<title>Couple Service 💖</title>
 
 <style>
 * { box-sizing:border-box; }
@@ -12,22 +12,36 @@ body { margin:0; font-family:sans-serif; background:#ffeef3; }
 .screen { display:none; height:100vh; flex-direction:column; }
 .active { display:flex; }
 
-.home { padding:20px; max-width:420px; margin:auto; }
-
-.big-dday {
-  text-align:center;
-  font-size:40px;
-  font-weight:bold;
-  color:#ff5d8f;
-  margin-top:40px;
+.center {
+  display:flex;
+  justify-content:center;
+  align-items:center;
 }
 
-.card {
+.loginBox {
+  width:90%;
+  max-width:400px;
   background:white;
+  padding:20px;
   border-radius:20px;
-  padding:18px;
-  margin-top:15px;
   box-shadow:0 8px 20px rgba(0,0,0,0.08);
+}
+
+.big-title {
+  text-align:center;
+  font-size:30px;
+  font-weight:bold;
+  color:#ff5d8f;
+  margin-bottom:20px;
+}
+
+input {
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:12px;
+  background:#f5f5f5;
 }
 
 button {
@@ -42,25 +56,7 @@ button {
   cursor:pointer;
 }
 
-input, textarea {
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:12px;
-  background:#f5f5f5;
-  margin-top:10px;
-}
-
-.codeBox {
-  background:#fff0f5;
-  padding:10px;
-  border-radius:12px;
-  text-align:center;
-  margin-top:10px;
-  font-weight:bold;
-  color:#ff5d8f;
-}
-
+/* 서비스 화면 */
 .header {
   padding:12px;
   background:white;
@@ -91,42 +87,36 @@ input, textarea {
   background:white;
 }
 
-.inputBar textarea { flex:1; }
-.inputBar button { width:70px; }
+.inputBar textarea {
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:12px;
+  background:#f5f5f5;
+}
 </style>
 </head>
 
 <body>
 
-<!-- 💙 홈 -->
-<div id="home" class="screen active">
-  <div class="home">
+<!-- 🔐 로그인 화면 -->
+<div id="loginScreen" class="screen active center">
+  <div class="loginBox">
 
-    <div class="big-dday" id="dday">D+0</div>
+    <div class="big-title">💖 Couple Login</div>
 
-    <div class="card">
-      <input type="date" id="start">
-      <button onclick="saveDate()">시작 날짜 저장</button>
-    </div>
+    <input id="room" placeholder="커플 코드">
+    <input id="name" placeholder="이름">
 
-    <div class="card">
-      <input id="room" placeholder="커플 코드">
-      <input id="name" placeholder="이름">
-
-      <button onclick="createRoom()">✨ 방 만들기</button>
-      <button onclick="copyCode()">📋 코드 복사</button>
-      <button onclick="connect()">💬 입장</button>
-
-      <div id="codeDisplay" class="codeBox">코드 없음</div>
-    </div>
+    <button onclick="login()">입장하기</button>
 
   </div>
 </div>
 
-<!-- 💬 채팅 -->
-<div id="chatScreen" class="screen">
+<!-- 💬 서비스 화면 -->
+<div id="appScreen" class="screen">
   <div class="header">
-    ← 커플 채팅
+    💖 Couple Chat
     <button onclick="logout()" style="float:right;width:80px;">로그아웃</button>
   </div>
 
@@ -169,77 +159,34 @@ window.onload = function(){
     roomId = r;
     userName = n;
 
-    document.getElementById("home").classList.remove("active");
-    document.getElementById("chatScreen").classList.add("active");
-
+    showApp();
     loadChat();
   }
 }
 
 
-// 💖 방 생성 (기존 유지)
-function createRoom(){
-  const code = Math.random().toString(36).substring(2,7);
-
-  const name = document.getElementById("name").value;
-
-  db.ref("rooms/"+code).set({
-    owner: name,
-    partner: "",
-    messages: {}
-  });
-
-  document.getElementById("room").value = code;
-  document.getElementById("codeDisplay").innerText = "💖 코드: " + code;
-}
-
-
-// 💖 코드 복사 (기존 기능)
-function copyCode(){
-  const room = document.getElementById("room").value;
-  if(!room) return alert("코드 먼저 만들어!");
-  navigator.clipboard.writeText(room);
-  alert("복사됨!");
-}
-
-
-// 💖 입장 + 2인 제한
-function connect(){
+// 💖 로그인
+function login(){
   roomId = document.getElementById("room").value;
   userName = document.getElementById("name").value;
 
   if(!roomId || !userName){
-    alert("코드랑 이름 입력!");
+    alert("입력해!");
     return;
   }
 
-  db.ref("rooms/"+roomId).once("value", snap=>{
-    const data = snap.val();
+  localStorage.setItem("roomId", roomId);
+  localStorage.setItem("userName", userName);
 
-    if(!data){
-      alert("없는 방");
-      return;
-    }
+  showApp();
+  loadChat();
+}
 
-    if(data.partner === "" && data.owner !== userName){
-      db.ref("rooms/"+roomId).update({
-        partner: userName
-      });
-    }
 
-    if(data.owner !== userName && data.partner !== userName){
-      alert("2명만 입장 가능");
-      return;
-    }
-
-    localStorage.setItem("roomId", roomId);
-    localStorage.setItem("userName", userName);
-
-    document.getElementById("home").classList.remove("active");
-    document.getElementById("chatScreen").classList.add("active");
-
-    loadChat();
-  });
+// 💖 화면 전환
+function showApp(){
+  document.getElementById("loginScreen").classList.remove("active");
+  document.getElementById("appScreen").classList.add("active");
 }
 
 
@@ -285,16 +232,6 @@ function logout(){
   localStorage.removeItem("roomId");
   localStorage.removeItem("userName");
   location.reload();
-}
-
-
-// 💖 디데이
-function saveDate(){
-  const d = document.getElementById("start").value;
-  localStorage.setItem("start", d);
-
-  const diff = Math.floor((new Date()-new Date(d))/86400000)+1;
-  document.getElementById("dday").innerText = "D+"+diff;
 }
 </script>
 
