@@ -32,7 +32,6 @@ body { margin:0; font-family:sans-serif; background:#ffeef3; }
   font-size:26px;
   font-weight:bold;
   color:#ff5d8f;
-  margin-bottom:15px;
 }
 
 input {
@@ -98,7 +97,7 @@ button {
 
 <body>
 
-<!-- 🔐 로그인 -->
+<!-- 🔐 시작 화면 -->
 <div id="login" class="screen active center">
   <div class="box">
 
@@ -108,7 +107,7 @@ button {
     <input id="name" placeholder="이름">
 
     <button onclick="createRoom()">✨ 방 만들기</button>
-    <button onclick="enterRoom()">💬 입장</button>
+    <button onclick="enterRoom()">💬 입장하기</button>
 
   </div>
 </div>
@@ -150,36 +149,26 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 
-// 🔥 자동 로그인
-window.onload = function(){
-  const r = localStorage.getItem("roomId");
-  const n = localStorage.getItem("userName");
-
-  if(r && n){
-    roomId = r;
-    userName = n;
-
-    showApp();
-    loadChat();
-  }
-};
-
-
-// ✨ 방 생성 (무조건 성공 구조)
+// 🔥 방 생성 (무조건 성공 확인)
 function createRoom(){
   const code = Math.random().toString(36).substring(2,7);
-
   document.getElementById("room").value = code;
 
   db.ref("rooms/"+code).set({
+    createdAt: Date.now(),
     messages: {}
+  })
+  .then(()=>{
+    alert("방 생성 완료: " + code);
+  })
+  .catch(err=>{
+    console.log(err);
+    alert("방 생성 실패");
   });
-
-  alert("방 생성됨: " + code);
 }
 
 
-// 💬 입장 (안정 버전)
+// 💬 입장 (완전 안정 버전)
 function enterRoom(){
   roomId = document.getElementById("room").value;
   userName = document.getElementById("name").value;
@@ -230,7 +219,7 @@ function send(){
 }
 
 
-// 💬 로딩
+// 💬 채팅 로드
 function loadChat(){
   db.ref("rooms/"+roomId+"/messages").on("value", snap=>{
     const chat = document.getElementById("chat");
