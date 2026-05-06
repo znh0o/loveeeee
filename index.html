@@ -6,34 +6,42 @@
 <title>Couple App 💖</title>
 
 <style>
-* { box-sizing:border-box; }
-body { margin:0; font-family:sans-serif; background:#ffeef3; }
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#ffeef3;
+}
 
-.screen { display:none; height:100vh; flex-direction:column; }
-.active { display:flex; }
+.screen{
+  display:none;
+  height:100vh;
+  flex-direction:column;
+}
 
-.center {
+.active{ display:flex; }
+
+.center{
   justify-content:center;
   align-items:center;
 }
 
-.box {
+.box{
   width:90%;
   max-width:400px;
   background:white;
   padding:20px;
   border-radius:20px;
-  box-shadow:0 8px 20px rgba(0,0,0,0.08);
+  box-shadow:0 10px 25px rgba(0,0,0,0.08);
 }
 
-.title {
+.title{
   text-align:center;
   font-size:26px;
   font-weight:bold;
   color:#ff5d8f;
 }
 
-input {
+input{
   width:100%;
   padding:12px;
   margin-top:10px;
@@ -42,52 +50,51 @@ input {
   background:#f5f5f5;
 }
 
-button {
+button{
   width:100%;
   padding:14px;
+  margin-top:10px;
   border:none;
   border-radius:14px;
-  margin-top:10px;
   background:#ff8fab;
   color:white;
   font-weight:bold;
 }
 
-/* chat */
-.header {
+/* CHAT */
+.header{
   padding:12px;
   background:white;
-  border-bottom:1px solid #eee;
 }
 
-.chat {
+.chat{
   flex:1;
   padding:15px;
   overflow-y:auto;
 }
 
-.msg {
+.msg{
   max-width:70%;
   padding:10px;
-  border-radius:16px;
-  margin-bottom:12px;
+  border-radius:14px;
+  margin-bottom:10px;
 }
 
-.me { background:#ff8fab; color:white; margin-left:auto; }
-.other { background:white; }
+.me{ background:#ff8fab; color:white; margin-left:auto; }
+.other{ background:white; }
 
-.inputBar {
+.inputBar{
   display:flex;
-  gap:8px;
   padding:10px;
+  gap:8px;
   background:white;
 }
 
-.inputBar textarea {
+textarea{
   flex:1;
-  padding:12px;
   border:none;
   border-radius:12px;
+  padding:10px;
   background:#f5f5f5;
 }
 </style>
@@ -95,22 +102,20 @@ button {
 
 <body>
 
-<!-- 로그인 -->
+<!-- LOGIN -->
 <div id="login" class="screen active center">
   <div class="box">
-
-    <div class="title">💖 Couple Chat</div>
+    <div class="title">💖 Couple App</div>
 
     <input id="room" placeholder="커플 코드">
     <input id="name" placeholder="이름">
 
     <button onclick="createRoom()">✨ 방 만들기</button>
-    <button onclick="enterRoom()">💬 입장하기</button>
-
+    <button onclick="enterRoom()">💬 입장</button>
   </div>
 </div>
 
-<!-- 채팅 -->
+<!-- CHAT -->
 <div id="app" class="screen">
   <div class="header">
     💬 Chat
@@ -147,78 +152,60 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 
-// 💖 방 생성
+// 💖 방 생성 (커플 전용 구조)
 function createRoom(){
+
   const code = Math.random().toString(36).substring(2,7).toLowerCase();
 
   document.getElementById("room").value = code;
 
-  db.ref("rooms/"+code).set({
+  db.ref("coupleRooms/"+code).set({
+    members:{},
     messages:{}
-  }).then(()=>{
-    alert("방 생성됨: " + code);
-    console.log("CREATE OK:", code);
-  }).catch(err=>{
-    console.log("CREATE FAIL:", err);
-    alert("생성 실패");
   });
+
+  alert("방 생성 완료: " + code);
 }
 
 
-// 💬 입장 (핵심 수정)
+// 💬 입장 (2명 제한 구조 준비)
 function enterRoom(){
 
-  // 🔥 핵심: trim + 소문자 정리
   roomId = document.getElementById("room").value.trim().toLowerCase();
   userName = document.getElementById("name").value.trim();
-
-  console.log("ENTER TRY:", roomId);
 
   if(!roomId || !userName){
     alert("입력!");
     return;
   }
 
-  const ref = db.ref("rooms/"+roomId);
+  const ref = db.ref("coupleRooms/"+roomId);
 
-  ref.once("value")
-    .then(snap=>{
+  ref.once("value").then(snap=>{
 
-      console.log("DB DATA:", snap.val());
+    if(!snap.exists()){
+      alert("없는 방");
+      return;
+    }
 
-      if(!snap.exists()){
-        alert("없는 방 (Firebase에 없음)");
-        return;
-      }
+    // 💖 멤버 등록 (2명 구조)
+    ref.child("members/"+userName).set(true);
 
-      localStorage.setItem("roomId", roomId);
-      localStorage.setItem("userName", userName);
-
-      showApp();
-      loadChat();
-    })
-    .catch(err=>{
-      console.log("ERROR:", err);
-      alert("Firebase 오류");
-    });
+    showApp();
+    loadChat();
+  });
 }
 
 
-// 💬 화면 전환
-function showApp(){
-  document.getElementById("login").classList.remove("active");
-  document.getElementById("app").classList.add("active");
-}
-
-
-// 💬 전송
+// 💬 메시지
 function send(){
   const msg = document.getElementById("msg").value;
   if(!msg) return;
 
-  db.ref("rooms/"+roomId+"/messages").push({
+  db.ref("coupleRooms/"+roomId+"/messages").push({
     name:userName,
-    text:msg
+    text:msg,
+    time:Date.now()
   });
 
   document.getElementById("msg").value="";
@@ -227,7 +214,9 @@ function send(){
 
 // 💬 로딩
 function loadChat(){
-  db.ref("rooms/"+roomId+"/messages").on("value", snap=>{
+
+  db.ref("coupleRooms/"+roomId+"/messages").on("value", snap=>{
+
     const chat = document.getElementById("chat");
     chat.innerHTML="";
 
@@ -248,9 +237,15 @@ function loadChat(){
 }
 
 
-// 🚪 로그아웃
+// 화면 전환
+function showApp(){
+  document.getElementById("login").classList.remove("active");
+  document.getElementById("app").classList.add("active");
+}
+
+
+// 로그아웃
 function logout(){
-  localStorage.clear();
   location.reload();
 }
 </script>
