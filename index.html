@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Couple Service 💖</title>
+<title>Couple Chat 💖</title>
 
 <style>
 * { box-sizing:border-box; }
@@ -18,7 +18,7 @@ body { margin:0; font-family:sans-serif; background:#ffeef3; }
   align-items:center;
 }
 
-.loginBox {
+.box {
   width:90%;
   max-width:400px;
   background:white;
@@ -56,12 +56,11 @@ button {
   cursor:pointer;
 }
 
-/* 채팅 */
+/* chat */
 .header {
   padding:12px;
   background:white;
   border-bottom:1px solid #eee;
-  font-weight:bold;
 }
 
 .chat {
@@ -74,7 +73,7 @@ button {
   max-width:70%;
   padding:10px;
   border-radius:16px;
-  margin-bottom:14px;
+  margin-bottom:12px;
 }
 
 .me { background:#ff8fab; color:white; margin-left:auto; }
@@ -99,26 +98,26 @@ button {
 
 <body>
 
-<!-- 🔐 시작 화면 (방 생성 + 입장) -->
-<div id="loginScreen" class="screen active center">
-  <div class="loginBox">
+<!-- 🔐 로그인 -->
+<div id="login" class="screen active center">
+  <div class="box">
 
-    <div class="title">💖 Couple Service</div>
+    <div class="title">💖 Couple Chat</div>
 
-    <input id="room" placeholder="커플 코드 (없으면 생성)">
+    <input id="room" placeholder="커플 코드">
     <input id="name" placeholder="이름">
 
     <button onclick="createRoom()">✨ 방 만들기</button>
-    <button onclick="enterRoom()">💬 입장하기</button>
+    <button onclick="enterRoom()">💬 입장</button>
 
   </div>
 </div>
 
-<!-- 💬 채팅 화면 -->
-<div id="appScreen" class="screen">
+<!-- 💬 채팅 -->
+<div id="app" class="screen">
   <div class="header">
-    💖 Couple Chat
-    <button onclick="logout()" style="float:right;width:80px;">로그아웃</button>
+    💬 Chat
+    <button onclick="logout()" style="float:right;width:80px;">나가기</button>
   </div>
 
   <div id="chat" class="chat"></div>
@@ -151,7 +150,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 
-// 💖 자동 로그인
+// 🔥 자동 로그인
 window.onload = function(){
   const r = localStorage.getItem("roomId");
   const n = localStorage.getItem("userName");
@@ -163,25 +162,24 @@ window.onload = function(){
     showApp();
     loadChat();
   }
-}
+};
 
 
-// 💖 방 생성
+// ✨ 방 생성 (무조건 성공 구조)
 function createRoom(){
   const code = Math.random().toString(36).substring(2,7);
+
   document.getElementById("room").value = code;
 
   db.ref("rooms/"+code).set({
-    owner:"",
-    partner:"",
-    messages:{}
+    messages: {}
   });
 
   alert("방 생성됨: " + code);
 }
 
 
-// 💖 입장
+// 💬 입장 (안정 버전)
 function enterRoom(){
   roomId = document.getElementById("room").value;
   userName = document.getElementById("name").value;
@@ -191,27 +189,30 @@ function enterRoom(){
     return;
   }
 
-  db.ref("rooms/"+roomId).once("value", snap=>{
-    const data = snap.val();
+  db.ref("rooms/"+roomId).once("value")
+    .then(snap=>{
+      if(!snap.exists()){
+        alert("없는 방");
+        return;
+      }
 
-    if(!data){
-      alert("없는 방");
-      return;
-    }
+      localStorage.setItem("roomId", roomId);
+      localStorage.setItem("userName", userName);
 
-    localStorage.setItem("roomId", roomId);
-    localStorage.setItem("userName", userName);
-
-    showApp();
-    loadChat();
-  });
+      showApp();
+      loadChat();
+    })
+    .catch(err=>{
+      console.log(err);
+      alert("연결 실패");
+    });
 }
 
 
-// 💖 화면 전환
+// 💬 화면 전환
 function showApp(){
-  document.getElementById("loginScreen").classList.remove("active");
-  document.getElementById("appScreen").classList.add("active");
+  document.getElementById("login").classList.remove("active");
+  document.getElementById("app").classList.add("active");
 }
 
 
@@ -229,33 +230,32 @@ function send(){
 }
 
 
-// 💬 채팅 로드
+// 💬 로딩
 function loadChat(){
-  const chatBox = document.getElementById("chat");
-
   db.ref("rooms/"+roomId+"/messages").on("value", snap=>{
-    chatBox.innerHTML="";
+    const chat = document.getElementById("chat");
+    chat.innerHTML="";
+
     const data = snap.val();
     if(!data) return;
 
     for(let id in data){
       const m = data[id];
-      const isMe = m.name === userName;
+      const me = m.name === userName;
 
-      chatBox.innerHTML += `
-        <div class="msg ${isMe?'me':'other'}">${m.text}</div>
+      chat.innerHTML += `
+        <div class="msg ${me?'me':'other'}">${m.text}</div>
       `;
     }
 
-    chatBox.scrollTop = chatBox.scrollHeight;
+    chat.scrollTop = chat.scrollHeight;
   });
 }
 
 
-// 💖 로그아웃
+// 🚪 로그아웃
 function logout(){
-  localStorage.removeItem("roomId");
-  localStorage.removeItem("userName");
+  localStorage.clear();
   location.reload();
 }
 </script>
