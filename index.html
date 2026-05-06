@@ -1,264 +1,216 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Couple Chat 💖</title>
+// 🚀 실행 방법
+// 1. npm create vite@latest couple-app -- --template react
+// 2. cd couple-app
+// 3. npm install firebase
+// 4. npm install
+// 5. 아래 코드로 App.jsx 교체
+// 6. npm run dev
 
-<style>
-body{
-  margin:0;
-  font-family:sans-serif;
-  background:#ffeef3;
-}
+import { useEffect, useState, useRef } from "react";
+import { initializeApp } from "firebase/app";
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  child,
+  push,
+  onValue,
+} from "firebase/database";
 
-.screen{
-  display:none;
-  height:100vh;
-  flex-direction:column;
-}
-
-.active{ display:flex; }
-
-.center{
-  justify-content:center;
-  align-items:center;
-}
-
-.box{
-  width:90%;
-  max-width:400px;
-  background:white;
-  padding:20px;
-  border-radius:16px;
-  box-shadow:0 8px 20px rgba(0,0,0,0.08);
-}
-
-input{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:12px;
-  background:#f5f5f5;
-}
-
-button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:12px;
-  background:#ff8fab;
-  color:white;
-  font-weight:bold;
-}
-
-/* chat */
-.header{
-  padding:12px;
-  background:white;
-  font-weight:bold;
-}
-
-.chat{
-  flex:1;
-  padding:10px;
-  overflow-y:auto;
-}
-
-.msg{
-  max-width:70%;
-  padding:10px;
-  margin:6px 0;
-  border-radius:14px;
-  background:#f1f1f1;
-}
-
-.me{
-  background:#ff8fab;
-  color:white;
-  margin-left:auto;
-}
-
-.inputBar{
-  display:flex;
-  padding:10px;
-  gap:8px;
-  background:white;
-}
-
-textarea{
-  flex:1;
-  border:none;
-  border-radius:10px;
-  padding:10px;
-  background:#f5f5f5;
-}
-</style>
-</head>
-
-<body>
-
-<!-- LOGIN -->
-<div id="login" class="screen active center">
-  <div class="box">
-
-    <h3>💖 Couple Chat</h3>
-
-    <input id="room" placeholder="커플 코드">
-    <input id="name" placeholder="이름">
-
-    <button onclick="createRoom()">방 만들기</button>
-    <button onclick="enterRoom()">입장</button>
-
-  </div>
-</div>
-
-<!-- CHAT -->
-<div id="chatScreen" class="screen">
-
-  <div class="header">
-    💬 Chat
-    <button onclick="goHome()" style="float:right;width:70px;">홈</button>
-  </div>
-
-  <div id="chat" class="chat"></div>
-
-  <div class="inputBar">
-    <textarea id="msg"></textarea>
-    <button onclick="send()">전송</button>
-  </div>
-
-</div>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-<script>
-let roomId = "";
-let userName = "";
-
-// Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyClSapSfkfkzoWMxHVlls1UjIRO4bHl1Fc",
-  authDomain: "first-app-ffb0b.firebaseapp.com",
-  databaseURL: "https://first-app-ffb0b-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "first-app-ffb0b"
+  apiKey: "AIzaSyBmAhTVM2R6fvXtPYN3D1HutB0b6Sdaszg",
+  authDomain: "rather-app-995d7.firebaseapp.com",
+  databaseURL: "https://rather-app-995d7-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rather-app-995d7",
+  storageBucket: "rather-app-995d7.firebasestorage.app",
+  messagingSenderId: "21809133829",
+  appId: "1:21809133829:web:ae211e8efd05e8685fdf6c",
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
+export default function App() {
+  const [step, setStep] = useState("login");
+  const [code, setCode] = useState("");
+  const [myCode, setMyCode] = useState("");
+  const [name, setName] = useState("");
+  const [room, setRoom] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const bottomRef = useRef(null);
 
-// 🔥 방 생성 (무조건 동일 구조)
-function createRoom(){
+  const generateCode = () => {
+    return Math.random().toString(36).substring(2, 8);
+  };
 
-  const code = Math.random().toString(36).substring(2,6).toLowerCase();
+  const handleLogin = async () => {
+    if (!name) return alert("이름을 입력하세요");
 
-  document.getElementById("room").value = code;
+    let finalCode = code || generateCode();
 
-  db.ref("rooms/"+code).set({
-    createdAt: Date.now(),
-    messages: {
-      system: {
-        name:"system",
-        text:"room created"
-      }
-    }
-  });
+    const roomRef = ref(db, `rooms/${finalCode}`);
+    const snapshot = await get(roomRef);
 
-  alert("방 생성됨: " + code);
-}
+    if (!snapshot.exists()) {
+      await set(roomRef, {
+        users: [name],
+      });
+      alert(`코드 생성됨: ${finalCode}`);
+    } else {
+      const data = snapshot.val();
+      if (data.users.length >= 2) return alert("이미 가득 찬 코드입니다");
 
-
-// 🔥 입장 (완전 고정 로직)
-function enterRoom(){
-
-  // 🚨 핵심: 무조건 동일 규칙
-  roomId = document.getElementById("room").value.trim().toLowerCase();
-  userName = document.getElementById("name").value.trim();
-
-  if(!roomId || !userName){
-    alert("입력!");
-    return;
-  }
-
-  console.log("ENTER ROOM:", roomId);
-
-  const ref = db.ref("rooms/"+roomId);
-
-  ref.once("value").then(snap=>{
-
-    if(!snap.exists()){
-      alert("없는 방");
-      return;
+      await set(roomRef, {
+        ...data,
+        users: [...data.users, name],
+      });
     }
 
-    const data = snap.val();
+    setMyCode(finalCode);
+    setRoom(finalCode);
+    setStep("home");
+  };
 
-    if(!data || !data.messages){
-      alert("방 데이터 오류");
-      return;
-    }
+  useEffect(() => {
+    if (!room) return;
 
-    showChat();
-    loadChat();
-  });
-}
+    const messagesRef = ref(db, `rooms/${room}/messages`);
 
+    onValue(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return setMessages([]);
 
-// 🔥 전송
-function send(){
+      const msgs = Object.keys(data).map((key) => ({
+        id: key,
+        ...data[key],
+      }));
 
-  const msg = document.getElementById("msg").value;
-  if(!msg) return;
+      setMessages(msgs);
 
-  db.ref("rooms/"+roomId+"/messages").push({
-    name:userName,
-    text:msg
-  });
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    });
+  }, [room]);
 
-  document.getElementById("msg").value="";
-}
+  const sendMessage = async () => {
+    if (!input.trim()) return;
 
+    const messagesRef = ref(db, `rooms/${room}/messages`);
 
-// 🔥 로딩
-function loadChat(){
-
-  db.ref("rooms/"+roomId+"/messages").on("value", snap=>{
-
-    const chat = document.getElementById("chat");
-    chat.innerHTML = "";
-
-    snap.forEach(child=>{
-      const m = child.val();
-
-      if(m.name === "system") return;
-
-      const isMe = m.name === userName;
-
-      chat.innerHTML += `
-        <div class="msg ${isMe?'me':'other'}">${m.text}</div>
-      `;
+    await push(messagesRef, {
+      text: input,
+      sender: name,
+      createdAt: Date.now(),
     });
 
-    chat.scrollTop = chat.scrollHeight;
-  });
+    setInput("");
+  };
+
+  if (step === "login") {
+    return (
+      <div className="h-screen flex items-center justify-center bg-pink-50">
+        <div className="bg-white p-6 rounded-2xl shadow-lg w-80">
+          <h1 className="text-xl font-bold mb-4 text-center">💖 Couple App</h1>
+          <input
+            placeholder="코드 입력 (없으면 자동 생성)"
+            className="w-full mb-2 p-2 border rounded"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <input
+            placeholder="이름 입력"
+            className="w-full mb-4 p-2 border rounded"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <button
+            onClick={handleLogin}
+            className="w-full bg-pink-400 text-white p-2 rounded-xl"
+          >
+            시작하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "home") {
+    return (
+      <div className="h-screen bg-pink-50 p-4">
+        <h1 className="text-2xl font-bold mb-2">🏠 홈</h1>
+
+        <div className="mb-4 bg-white p-3 rounded-xl shadow text-center">
+          🔑 내 코드: <b>{myCode}</b>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div
+            className="bg-white p-4 rounded-2xl shadow cursor-pointer"
+            onClick={() => setStep("chat")}
+          >
+            💬 메신저
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl shadow">
+            📸 추억 앨범
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl shadow">
+            ❤️ 오늘의 질문
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "chat") {
+    return (
+      <div className="h-screen flex flex-col bg-white">
+        <div className="p-4 bg-pink-400 text-white flex justify-between">
+          <span>💬 채팅방</span>
+          <button onClick={() => setStep("home")}>⬅️</button>
+        </div>
+
+        <div className="flex-1 p-4 overflow-y-auto space-y-2">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex ${msg.sender === name ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`px-4 py-2 rounded-2xl max-w-[70%] ${
+                  msg.sender === name
+                    ? "bg-pink-400 text-white"
+                    : "bg-gray-200"
+                }`}
+              >
+                <p className="text-sm">{msg.text}</p>
+                <p className="text-[10px] opacity-70 mt-1">{msg.sender}</p>
+              </div>
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="p-2 flex gap-2 border-t">
+          <input
+            className="flex-1 border rounded p-2"
+            placeholder="메시지 입력"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          />
+          <button
+            onClick={sendMessage}
+            className="bg-pink-400 text-white px-4 rounded"
+          >
+            전송
+          </button>
+        </div>
+      </div>
+    );
+  }
 }
-
-
-// 화면 전환
-function showChat(){
-  document.getElementById("login").classList.remove("active");
-  document.getElementById("chatScreen").classList.add("active");
-}
-
-function goHome(){
-  location.reload();
-}
-</script>
-
-</body>
-</html>
